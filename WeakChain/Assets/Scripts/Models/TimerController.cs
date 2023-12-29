@@ -38,10 +38,17 @@ public class TimerController : MonoBehaviour
     public void SetTimer(float time)
     {
         currentValue_ = time;
+        Pause(false);
     }
 
     public void Pause(bool value)
     {
         isPaused_ = value;
+    }
+    
+    public void StopTimer()
+    {
+        Pause(true);
+        currentValue_ = 0f;
     }
 }

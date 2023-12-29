@@ -6,9 +6,11 @@ public class RoundWindowHierarchy : MonoBehaviour
 {
    public GameObject Content;
    public GameObject InputBlocker;
+   public GameObject MainButtonsHolder;
    public RoundMilestoneHierarchy[] RoundMilestones;
    public Button BankButton;
    public Button YesButton;
+   public Button NextRoundButton;
    public Button NoButton;
    public Button BackButton;
    public Button PlayPauseButton;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 
@@ -19,23 +20,22 @@ public class QuestionsController : IDisposable
     public void LoadQuestions()
     {
         questions_ = new Dictionary<int, QuestionModel>();
-        var payload = Resources.Load<TextAsset>("Questions");
-        string[] questions = payload.text.Split(new string[] {",", "\n"}, StringSplitOptions.None);
-        int tableSize = questions.Length / 3 - 1;
-        for (int i = 0; i < tableSize; i++)
+        var questions = ParseCSV("Questions");
+        for (int i = 0; i < questions.Count; i++)
         {
-            int id = int.Parse(questions[(i + 1) * 3]);
+            string stringId = questions[i][0];
+            int intId = int.Parse(stringId);
             
-            if (PlayerPrefs.HasKey(id.ToString()))
+            if (PlayerPrefs.HasKey(stringId))
             {
                 continue;
             }
             
             var question = new QuestionModel();
             
-            question.Id = id;
-            question.Question = questions[(i + 1) * 3 + 1];
-            question.Answer = questions[(i + 1) * 3 + 2];
+            question.Id = intId;
+            question.Question = questions[i][1];
+            question.Answer = questions[i][2];
             questions_.Add(question.Id, question);
         }
     }
@@ -54,5 +54,67 @@ public class QuestionsController : IDisposable
     {
         PlayerPrefs.SetInt(id.ToString(), id);
         PlayerPrefs.Save();
+    }
+
+    public List<List<string>> ParseCSV(string fileName)
+    {
+        List<List<string>> data = new List<List<string>>();
+
+        TextAsset csvData = Resources.Load<TextAsset>(fileName);
+        if (csvData == null)
+        {
+            Debug.LogError("CSV file not found: " + fileName);
+            return data;
+        }
+
+        string[] lines = csvData.text.Split('\n');
+
+        if (lines.Length > 0)
+        {
+            string[] headers = lines[0].Split(',');
+
+            for (int i = 1; i < lines.Length; i++)
+            {
+                string[] values = SplitCSVLine(lines[i]);
+
+                List<string> entry = new List<string>();
+                for (int j = 0; j < headers.Length && j < values.Length; j++)
+                {
+                    entry.Add(values[j]);
+                }
+
+                data.Add(entry);
+            }
+        }
+
+        return data;
+    }
+
+    private string[] SplitCSVLine(string line)
+    {
+        List<string> values = new List<string>();
+        bool insideQuotes = false;
+        string currentField = "";
+
+        foreach (char c in line)
+        {
+            if (c == ',' && !insideQuotes)
+            {
+                values.Add(currentField);
+                currentField = "";
+            }
+            else if (c == '"')
+            {
+                insideQuotes = !insideQuotes;
+            }
+            else
+            {
+                currentField += c;
+            }
+        }
+
+        values.Add(currentField);
+
+        return values.ToArray();
     }
 }

@@ -1,4 +1,6 @@
+using DG.Tweening;
 using System;
+using System.Collections;
 using System.Linq;
 using UnityEngine;
 
@@ -27,6 +29,7 @@ public class RoundWindowController : IDisposable
         hierarchy_.NoButton.onClick.AddListener(NoButtonClickHadler);
         hierarchy_.BackButton.onClick.AddListener(BackButtonClickHadler);
         hierarchy_.PlayPauseButton.onClick.AddListener(PlayPauseButtonClickHadler);
+        hierarchy_.NextRoundButton.onClick.AddListener(NextRoundButtonClickHandler);
         
         LobbyWindowController.OnStartButtonClicked += Show;
         timerController_.OnValueChanged += TimerValueChangedHandler;
@@ -62,6 +65,8 @@ public class RoundWindowController : IDisposable
     {
         isPaused_ = true;
         hierarchy_.Content.SetActive(true);
+        hierarchy_.MainButtonsHolder.SetActive(true);
+        hierarchy_.NextRoundButton.gameObject.SetActive(false);
         ResetGame();
         
         UpdateContent(true);
@@ -80,7 +85,7 @@ public class RoundWindowController : IDisposable
         if(selectedMilestoneIndex_ >= hierarchy_.RoundMilestones.Length)
         {
             selectedMilestoneIndex_ = 0;
-            StopGame();
+            StopGame(true);
         }
         
         UpdateContent(true);
@@ -88,12 +93,15 @@ public class RoundWindowController : IDisposable
     
     private void BankButtonClickHandler()
     {
-        currentBank_ += hierarchy_.RoundMilestones[selectedMilestoneIndex_].Price;
-        if (currentBank_ > hierarchy_.RoundMilestones.Last().Price)
+        if (selectedMilestoneIndex_ > 0)
         {
-            currentBank_ = hierarchy_.RoundMilestones.Last().Price;
+            currentBank_ += hierarchy_.RoundMilestones[selectedMilestoneIndex_ - 1].Price;
+            if (currentBank_ > hierarchy_.RoundMilestones.Last().Price)
+            {
+                currentBank_ = hierarchy_.RoundMilestones.Last().Price;
+            }
         }
-        
+
         selectedMilestoneIndex_ = 0;
         
         UpdateContent(false);
@@ -117,7 +125,7 @@ public class RoundWindowController : IDisposable
             currentMilestone.Image.color = i > selectedMilestoneIndex_ ? Color.blue : Color.white;
         }
         
-        hierarchy_.RoundMilestones[selectedMilestoneIndex_].Image.color = Color.green;
+        hierarchy_.RoundMilestones[selectedMilestoneIndex_].Image.color = Color.red;
     }
     
     private void ShowQuestion()
@@ -127,15 +135,34 @@ public class RoundWindowController : IDisposable
         hierarchy_.Answer.text = question.Answer;
     }
     
-    private void StopGame()
+    private void StopGame(bool instant)
     {
+        var sequence = DOTween.Sequence();
+        float delay = instant ? 0 : 3f;
+        sequence.InsertCallback(delay, (() =>
+        {
+            hierarchy_.MainButtonsHolder.SetActive(false);
+            hierarchy_.NextRoundButton.gameObject.SetActive(true);
+        }));
+        
+        timerController_.StopTimer();
+        PlayPauseButtonClickHadler();
     }
     
     private void TimerValueChangedHandler()
     {
+        if (timerController_.CurrentValue <= 0 && !isPaused_)
+            StopGame(false);
+        
         TimeSpan time = TimeSpan.FromSeconds( timerController_.CurrentValue);
         string displayTime = time.ToString(@"mm\:ss");
         hierarchy_.Timer.text = displayTime;
+    }
+    
+    private void NextRoundButtonClickHandler()
+    {
+        GlobalModel.PlayersAmount--;
+        Show();
     }
     
     private void ResetGame()
